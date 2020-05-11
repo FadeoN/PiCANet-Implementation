@@ -14,13 +14,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     print("Default path : " + os.getcwd())
     parser.add_argument("--model_dir",
-                        help="Directory of pre-trained model, you can download at \n"
-                             "https://drive.google.com/drive/folders/1s4M-_SnCPMj_2rsMkSy3pLnLQcgRakAe?usp=sharing")
-    parser.add_argument('--dataset', help='Directory of your test_image ""folder""', required=True)
+                        help="Directory of pre-trained model, you can download at \n",
+                             default="D:/Git/PiCANet-Implementation/model.ckpt")
+    parser.add_argument('--dataset', help='Directory of your test_image ""folder""', default="D:\\Git\\SAKE - ORIGINAL\\SAKE\\dataset\\TUBerlin\\images")
     parser.add_argument('--cuda', help="cuda for cuda, cpu for cpu, default = cuda", default='cuda')
-    parser.add_argument('--batch_size', help="batchsize, default = 4", default=4, type=int)
+    parser.add_argument('--batch_size', help="batchsize, default = 4", default=2, type=int)
     parser.add_argument('--logdir', help="logdir, log on tensorboard", default=None)
-    parser.add_argument('--save_dir', help="save result images as .jpg file. If None -> Not save", default=None)
+    parser.add_argument('--save_dir', help="save result images as .jpg file. If None -> Not save", default="D:\\Git\\SAKE - ORIGINAL\\SAKE\\dataset\\TUBerlin\\results")
 
     args = parser.parse_args()
 
@@ -36,13 +36,13 @@ if __name__ == '__main__':
     model.load_state_dict(state_dict)
     custom_dataset = CustomDataset(root_dir=args.dataset)
     dataloader = DataLoader(custom_dataset, args.batch_size, shuffle=False)
-    os.makedirs(os.path.join(args.save_dir, 'img'), exist_ok=True)
-    os.makedirs(os.path.join(args.save_dir, 'mask'), exist_ok=True)
+    # os.makedirs(os.path.join(args.save_dir, 'img'), exist_ok=True)
+    # os.makedirs(os.path.join(args.save_dir, 'mask'), exist_ok=True)
     if args.logdir is not None:
         writer = SummaryWriter(args.logdir)
     model.eval()
     for i, batch in enumerate(tqdm(dataloader)):
-        img = batch.to(device)
+        img = batch.to(device)  
         with torch.no_grad():
             pred, loss = model(img)
         pred = pred[5].data
@@ -52,7 +52,21 @@ if __name__ == '__main__':
             writer.add_image(args.model_dir + ', mask', pred, i)
         if args.save_dir is not None:
             for j in range(img.shape[0]):
-                torchvision.utils.save_image(img[j], os.path.join(args.save_dir, 'img', '{}_{}.jpg'.format(i, j)))
-                torchvision.utils.save_image(pred[j], os.path.join(args.save_dir, 'mask', '{}_{}.jpg'.format(i, j)))
+                idx = i*args.batch_size + j
+    
+                tmp = custom_dataset.image_list[idx]
+
+                tmp = tmp.split("\\")
+                
+                tmp_path = os.path.join(args.save_dir, *tmp[-3:-1])
+
+
+
+                os.makedirs(tmp_path, exist_ok=True)
+                    
+                tmp_path = os.path.join(tmp_path, tmp[-1])
+
+                # torchvision.utils.save_image(img[j], os.path.join(tmp_path, 'img', '{}.jpg'.format() ))
+                torchvision.utils.save_image(pred[j], tmp_path)
     if args.logdir is not None:
         writer.close()
